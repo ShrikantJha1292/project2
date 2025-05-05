@@ -21,6 +21,9 @@
         path: /etc/apt/keyrings
         state: directory
         mode: '0755'
+    - name: Set codename to 'jammy' for Docker (workaround for noble)
+      set_fact:
+        docker_apt_codename: "jammy"
 
     - name: Download Docker’s official GPG key
       get_url:
