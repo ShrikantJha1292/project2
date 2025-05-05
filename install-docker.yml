@@ -23,7 +23,7 @@
         mode: '0755'
     - name: Set codename to 'jammy' for Docker (workaround for noble)
       set_fact:
-        docker_apt_codename: "jammy"
+        docker_apt_codename: "{{ ansible_lsb.codename if ansible_lsb.codename != 'noble' else 'jammy' }}"
 
     - name: Download Docker’s official GPG key
       get_url:
