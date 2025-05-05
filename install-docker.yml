@@ -1,34 +1,36 @@
 ---
-- name: Install Docker on Ubuntu (incl. noble workaround)
+- name: Install Docker securely with keyring on Ubuntu 24.04
   hosts: testserver
   become: true
 
   vars:
-    docker_apt_codename: "jammy"  # Override noble
+    docker_apt_codename: "jammy"
 
   tasks:
-    - name: Ensure required packages are installed
+    - name: Install required dependencies
       apt:
         name:
           - ca-certificates
           - curl
           - gnupg
+          - lsb-release
         state: present
         update_cache: yes
 
-    - name: Create keyrings directory if not exists
+    - name: Create keyrings directory
       file:
         path: /etc/apt/keyrings
         state: directory
         mode: '0755'
 
-    - name: Download Docker GPG key
-      get_url:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        dest: /etc/apt/keyrings/docker.gpg
-        mode: '0644'
+    - name: Add Docker GPG key to trusted keyring
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+        gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
 
-    - name: Add Docker APT repository
+    - name: Add Docker repository using signed-by
       apt_repository:
         repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ docker_apt_codename }} stable"
         filename: docker
@@ -38,32 +40,10 @@
       apt:
         update_cache: yes
 
-    - name: Install Docker Engine and CLI
+    - name: Install Docker
       apt:
         name:
           - docker-ce
           - docker-ce-cli
           - containerd.io
         state: present
-
-    - name: Ensure Docker service is running
-      service:
-        name: docker
-        state: started
-        enabled: true
-
-    - name: Add current user to docker group
-      user:
-        name: "{{ ansible_user }}"
-        groups: docker
-        append: yes
-      when: ansible_user != 'root'
-
-    - name: Display Docker version
-      command: docker --version
-      register: docker_version_output
-      changed_when: false
-
-    - name: Print Docker version
-      debug:
-        msg: "{{ docker_version_output.stdout }}"
